@@ -38,7 +38,9 @@ class Play extends Phaser.Scene {
     
     create() {
         
-
+        this.music = this.sound.add('music') 
+        this.music.setLoop(true)
+        this.music.play()
 
         //game clock
         this.gameTime = 0
@@ -293,6 +295,7 @@ class Play extends Phaser.Scene {
 
         } else {
             console.log("game over")
+            this.music.stop()
             this.physics.world.gravity.y = 0
             if (this.speeding === true){
                 this.superSpeedMult = 1

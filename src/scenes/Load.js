@@ -36,6 +36,7 @@ class Load extends Phaser.Scene {
         this.load.audio('projectile', './assets/projectile.wav')
         this.load.audio('boost', './assets/boost.wav')
         this.load.audio('start', './assets/start.wav')
+        this.load.audio('music', './assets/Song.m4a')
     }
 
     create() {
