@@ -1,4 +1,4 @@
-class SuperSpeedPU extends Phaser.gameObjects.Sprite {
+class SuperSpeedPU extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, texture, frame) {
         super(scene, x, y, texture, frame)
 
@@ -14,6 +14,15 @@ class SuperSpeedPU extends Phaser.gameObjects.Sprite {
     }
 
     update() {
-        this.speed = game.settings.scrollVelocity
+        if (this.parentScene.gameOver === false){
+            this.speed = game.settings.scrollVelocity
+            this.body.setVelocityX(this.speed)
+        } else {
+            this.body.setVelocityX(0)
+        }
+
+        if (this.x < -20){
+            this.destroy()
+        }
     }
 }

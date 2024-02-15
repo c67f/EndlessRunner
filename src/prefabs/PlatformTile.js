@@ -20,12 +20,18 @@ class PlatformTile extends Phaser.GameObjects.Sprite {
     }
 
     update() {
-        this.speed = game.settings.scrollVelocity
+        if (this.parentScene.gameOver === false){
+            this.speed = game.settings.scrollVelocity
+            this.body.setVelocityX(this.speed)
+        } else {
+            this.body.setVelocityX(0)
+        }
+        //console.log(this.speed)
         //console.log(this.lastTile)
         if (this.x < this.parentScene.spawnWhenPassed){
             if (this.lastTile === true){
-                console.log(this.x)
-                console.log(this.parentScene.spawnWhenPassed)
+                //console.log(this.x)
+                //console.log(this.parentScene.spawnWhenPassed)
                 this.parentScene.addPlatform()
                 this.lastTile = false
             }
@@ -35,4 +41,8 @@ class PlatformTile extends Phaser.GameObjects.Sprite {
             this.destroy()
         }
     }
+
+    /*gameOver() {
+        this.body.setVelocity(0)
+    }*/
 }

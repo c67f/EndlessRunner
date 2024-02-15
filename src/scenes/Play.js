@@ -26,24 +26,30 @@ class Play extends Phaser.Scene {
         this.superSpeedSpriteHeight = 20 //height in pixels of the sprite for the super speed power up
         this.superSpeedMult = 1
 
-        this.randomNumMax = 500 //controls the frequency of projectiles
-        this.randomNumMax2 = 40 //controls the frequency of super speed powerups
+        this.randomNumMax = 600 //controls the frequency of projectiles
+        this.randomNumMax2 = 1000 //controls the frequency of super speed powerups
 
-        this.coyoteTimer = 100
+        //this.coyoteTimer = 100
         this.speedTime = 5000
+        this.warningTime = 1000
 
         this.speeding = false //true if super speed is active
     }
     
     create() {
+        
+
+
         //game clock
         this.gameTime = 0
         this.startTime = game.getTime()
 
-        this.background = this.add.sprite(0, 0, 'background').setOrigin(0, 0)
-
+        this.background = this.add.tileSprite(0, 0, 640, 480, 'background').setOrigin(0, 0)
+        //let warningTest = this.add.sprite (width/2, height/2, 'warning').setOrigin(0.5,0.5)
+        //warningTest.anims.play('warningAnim')
         //add player
         this.player = this.physics.add.sprite(this.startX, this.startY, 'player').setOrigin(0.5)
+        this.player.anims.play('idleAnim', true)
         this.player.setCollideWorldBounds(true)
         this.player.grounded = false
         this.player.offGround = true //true if the player is not touching the ground - this is a separate variable for coyote time
@@ -58,13 +64,32 @@ class Play extends Phaser.Scene {
         this.platform.body.allowGravity = false*/
 
         //add spawning platforms/buildings
-        this.platforms = this.add.group({
-            runChildUpdate: true
+        this.platforms = this.physics.add.group({
+            runChildUpdate: true,
+            immovable: true,
+            allowGravity: false,
+            frictionX: 0,
         })
+        /*this.platformsPhysics = this.physics.add.group({
+            runChildUpdate: true
+        })*/
         this.addPlatform()
+
+        //add distance/time counter:
+        this.score = 0
+        let scoreConfig = {
+            fontFamily: 'Courier',
+            fontSize: '18px',
+            color: '#0820DD',
+            align: 'left',
+        }
+        this.scoreText = this.add.text(width/15, height/15, this.score, scoreConfig).setOrigin(0, 0)
+        
+
         
         this.projectiles = this.add.group({
             runChildUpdate: true
+
         })
 
         this.superSpeedPUs = this.add.group({
@@ -96,19 +121,25 @@ class Play extends Phaser.Scene {
             this
         )
 
-        this.superSpeedCollider = this.physics.add.collider(
+        /*this.superSpeedCollider = this.physics.add.collider(
             this.player,
             this.superSpeedPUs,
-            this.superSpeedCollected,
+            this.superSpeedCollected(),
             null,
             this
-        )
+        )*/
+        this.physics.add.overlap(this.player, this.superSpeedPUs, this.superSpeedCollected, null, this)
+
+
+
+        
 
 
         keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)
         keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
         keyJUMP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
         keyDOWN = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)
+        keyRESET = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R)
     }
 
     addPlatform() {
@@ -130,9 +161,11 @@ class Play extends Phaser.Scene {
             //console.log(platform.x)
             
             this.platforms.add(platform)
+            //this.platformsPhysics.add(platform)
         }
         let platformLast = new PlatformTile(this, width + ((length-1) * this.tileWidth), randomHeight, 'buildingTile', 0).setOrigin(0, 0)
         platformLast.lastTile = true
+        //this.platformsPhysics.add(platformLast)
         this.platforms.add(platformLast)
 
         this.lastPlatformHeight = randomHeight
@@ -141,15 +174,20 @@ class Play extends Phaser.Scene {
 
     addProjectile() {
         let randomY = Phaser.Math.Between(this.playerHeight*3, this.lastPlatformHeight)
-
-        let projectile = new Projectile(this, width, randomY, 'projectile', 0).setOrigin(0.5, 0.5)
-        this.projectiles.add(projectile)
+        let warningSign = this.add.sprite((width - width/8), randomY, 'warning').setOrigin(0.5, 0.5)
+        warningSign.anims.play('warningAnim')
+        this.time.delayedCall(this.warningTime, () => {
+            this.sound.play('projectile')
+            warningSign.destroy()
+            let projectile = new Projectile(this, width*1.1, randomY, 'projectile', 0).setOrigin(0.5, 0.5)
+            this.projectiles.add(projectile)
+        })
     }
 
     addSuperSpeedPU() {
-        let powerUpY = this.lastPlatformHeight + this.superSpeedSpriteHeight/2
+        let powerUpY = this.lastPlatformHeight - this.superSpeedSpriteHeight/1.5
 
-        let powerUp = new SuperSpeedPU(this, width, powerUpY, 'projectile', 0).setOrigin(0.5, 0.5)
+        let powerUp = new SuperSpeedPU(this, width, powerUpY, 'superSpeed', 0).setOrigin(0.5, 0.5)
         this.superSpeedPUs.add(powerUp)
         console.log("addSuperSpeedPU")
     }
@@ -173,32 +211,54 @@ class Play extends Phaser.Scene {
             this.gameOver = true
         }
         //console.log(this.gameOver)
+        
+
+
+        if (Phaser.Input.Keyboard.JustDown(keyRESET)){
+            console.log(this.speeding)
+            if (this.speeding === true){
+                this.superSpeedMult = 1
+                game.settings.scrollVelocity = game.settings.scrollVelocity/5
+                this.spawnWhenPassed = 120
+                this.speeding = false
+            }
+            this.scene.restart()
+        }
         if (!this.gameOver) {
+            this.score = this.gameTime
+            this.scoreText.text = (this.score/100).toFixed(0)
+
+            this.background.tilePositionX -= game.settings.scrollVelocity/180
             //Jump:
             if (this.player.grounded && Phaser.Input.Keyboard.JustDown(keyJUMP)){
                 this.player.setVelocityY(-this.jumpPower)
                 this.player.jumped = true
                 // //probably temporary till I change it to happen when no longer touching a ground collision box
                 //this.player.body.allowGravity = true
+            } else if (this.player.grounded) {
+                console.log('on ground')
+                this.player.anims.play('idleAnim', true)
+                //console.log(this.player.anims)
             }
 
             //Drop/Boost downward:
             if (this.player.grounded === false && Phaser.Input.Keyboard.JustDown(keyDOWN)){
                 console.log('boost downward')
+                this.sound.play('boost')
                 this.player.setVelocityY(this.jumpPower)
             }
 
-            if (this.speeding === false){
-                //spawning projectiles:
-                let randomNum = Phaser.Math.Between(0, this.randomNumMax)
-                console.log(randomNum)
-                if (randomNum === this.randomNumMax - 1){
-                    this.addProjectile()
-                }
+            //spawning projectiles:
+            let randomNum = Phaser.Math.Between(0, this.randomNumMax)
+            //console.log(randomNum)
+            if (randomNum === this.randomNumMax - 1){
+                this.addProjectile()
+            }
 
+            if (this.speeding === false){
                 //spawning powerups:
                 let randomNum2 = Phaser.Math.Between(0, this.randomNumMax2)
-                console.log(randomNum2)
+                //console.log(randomNum2)
                 if (randomNum2 === this.randomNumMax2 - 1){
                     this.addSuperSpeedPU()
                     console.log("spawned super speed powerup")
@@ -232,7 +292,15 @@ class Play extends Phaser.Scene {
             */
 
         } else {
-            this.platforms.setVelocityX(0) //this doesn't seem to work
+            console.log("game over")
+            this.physics.world.gravity.y = 0
+            if (this.speeding === true){
+                this.superSpeedMult = 1
+                game.settings.scrollVelocity = game.settings.scrollVelocity/5
+                this.spawnWhenPassed = 120
+                this.speeding = false
+            }
+            //this.platforms.setVelocity(10) //this doesn't seem to work
         }
 
     }
@@ -248,12 +316,25 @@ class Play extends Phaser.Scene {
         this.gameOver = true
     }
 
-    superSpeedCollected() {
-        this.superSpeedMult = 12
+    superSpeedCollected(playerArg, powerUpArg) {
+        this.sound.play('speedPowerUp')
+        console.log("Super speed powerup collected")
+        this.speeding = true
+
+        this.superSpeedMult = 2
+        game.settings.scrollVelocity *= 5
+        let oldMinDist = this.minPlatformDistance
+        this.spawnWhenPassed = this.minPlatformDistance
+        this.physics.world.gravity.y = this.physics.world.gravity.y/3
+
         let speedTimer = this.time.delayedCall(this.speedTime, () => {
-            game.settings.scrollVelocity *= 10
-            this.spawnWhenPassed = this.minPlatformDistance * 1.5
+            this.superSpeedMult = 1
+            game.settings.scrollVelocity = game.settings.scrollVelocity/5
+            this.spawnWhenPassed = oldMinDist
+            this.physics.world.gravity.y = this.physics.world.gravity.y*3
+            this.speeding = false
         })
-        this.superSpeedMult = 1
+
+        powerUpArg.destroy()
     }
 }

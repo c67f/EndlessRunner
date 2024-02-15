@@ -13,8 +13,15 @@ class Projectile extends Phaser.GameObjects.Sprite {
     }
 
     update() {
-        this.speed = game.settings.scrollVelocity
-        
+        if (this.parentScene.gameOver === false){
+            this.speed = game.settings.scrollVelocity
+            this.body.setVelocityX(this.speed)
+        } else {
+            this.body.setVelocityX(0)
+        }
+        if (this.x < -20){
+            this.destroy()
+        }
     }
 
 }
